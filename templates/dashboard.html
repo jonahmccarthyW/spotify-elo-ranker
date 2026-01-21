@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spotify Elo Ranker</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        .btn { background: #1DB954; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+    <h1>🏆 Elo Leaderboard</h1>
+    <div style="display: flex; gap: 10px;">
+        {% if not first_run %}
+            <a href="/sync" class="btn" style="background: #2E77D0;">☁️ Sync to Spotify</a>
+
+            <a href="/rank" class="btn" style="background: #3c8012;">⚔️ Start Ranking</a>
+
+            <a href="/reset" class="btn" style="background: #681414;" onclick="return confirm('Are you sure? This will wipe all rankings!');">🧨 Reset Ratings</a>
+        {% endif %}
+
+        <a href="/ingest" class="btn" style="background:#333;">🔄 Update Tracklist</a>
+    </div>
+</div>
+
+    {% if first_run %}
+        <p>No data found. Click "Fetch Playlist" to load songs from Spotify.</p>
+    {% else %}
+        <table>
+            <tr>
+                <th>Rank</th>
+                <th>Rating</th>
+                <th>Song</th>
+                <th>Artist</th>
+                <th>Matches</th>
+            </tr>
+            {% for song in songs %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td style="color: #1DB954; font-weight:bold;">{{ song.rating }}</td>
+                <td>{{ song.name }}</td>
+                <td>{{ song.artist }}</td>
+                <td>{{ song.matches }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+</body>
+</html>
