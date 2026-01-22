@@ -159,18 +159,23 @@ def rank():
         return "Not enough songs to rank! Please <a href='/ingest'>Sync Playlist</a> first."
 
     if request.method == 'POST':
+        action = request.form.get('action')
+
+        # Logic for Skipping
+        if action == 'skip':
+            return redirect(url_for('rank'))
+
+        # Logic for Voting
         winner = request.form.get('winner')
         loser = request.form.get('loser')
 
         if winner in db and loser in db:
-            # --- UPDATED CALL ---
-            # We now pass the match counts for both songs
             new_w, new_l = calculate_new_ratings(
                 db[winner]['rating'],
                 db[loser]['rating'],
                 1,
-                db[winner]['matches'],  # Pass winner's match count
-                db[loser]['matches']  # Pass loser's match count
+                db[winner]['matches'],
+                db[loser]['matches']
             )
 
             db[winner]['rating'] = new_w
@@ -182,17 +187,32 @@ def rank():
 
         return redirect(url_for('rank'))
 
-    # --- MATCHMAKING LOGIC ---
-    # 1. Calibration: Prioritize songs with few matches
-    unranked = [u for u in uris if db[u]['matches'] < 5]
+    # --- UPDATED MATCHMAKING LOGIC ---
 
-    if len(unranked) >= 2:
-        id_a, id_b = random.sample(unranked, 2)
-    elif len(unranked) == 1:
-        id_a = unranked[0]
+    # Priority 1: Strictly 0 matches (Placement)
+    zero_matches = [u for u in uris if db[u]['matches'] == 0]
+
+    # Priority 2: Less than 5 matches (Calibration)
+    low_matches = [u for u in uris if db[u]['matches'] < 5]
+
+    if len(zero_matches) >= 2:
+        # Pit two unplayed songs against each other
+        id_a, id_b = random.sample(zero_matches, 2)
+        print("DEBUG: Matchmaking Tier 1 (Both 0 matches)")
+
+    elif len(zero_matches) == 1:
+        # Pit the single unplayed song against a random opponent
+        id_a = zero_matches[0]
         id_b = random.choice([u for u in uris if u != id_a])
+        print("DEBUG: Matchmaking Tier 1 (One 0 match)")
+
+    elif len(low_matches) >= 2:
+        # Pit calibration songs together
+        id_a, id_b = random.sample(low_matches, 2)
+        print("DEBUG: Matchmaking Tier 2 (Calibration < 5)")
+
     else:
-        # 2. Standard Matchmaking: Find close games
+        # Tier 3: Standard Elo Matchmaking (Find close games)
         id_a = random.choice(uris)
         rating_a = db[id_a]['rating']
 
@@ -201,12 +221,12 @@ def rank():
 
         if candidates:
             id_b = random.choice(candidates)
+            print("DEBUG: Matchmaking Tier 3 (Fair Match)")
         else:
-            # Fallback: Pick any random opponent
             id_b = random.choice([u for u in uris if u != id_a])
+            print("DEBUG: Matchmaking Tier 3 (Random Fallback)")
 
     return render_template('rank.html', song_a=db[id_a], song_b=db[id_b])
-
 
 @app.route('/sync')
 def sync_playlist():
