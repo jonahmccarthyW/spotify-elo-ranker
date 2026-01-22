@@ -25,8 +25,7 @@ REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI', 'http://127.0.0.1:5000/callback
 # App Config
 TARGET_PLAYLIST_ID = '4lJhU5XSMgOpHyuZxbyP0Z'
 DB_FILE = 'songs.json'
-SCOPE = "user-library-read playlist-read-private playlist-modify-private playlist-modify-public"
-
+SCOPE = "user-library-read playlist-read-private playlist-modify-private playlist-modify-public user-modify-playback-state"
 
 # --- AUTH MANAGER ---
 def create_auth_manager():
@@ -227,6 +226,24 @@ def reset_elos():
         db[uri]['matches'] = 0
     save_db(db)
     return redirect(url_for('dashboard'))
+
+
+@app.route('/play/<path:uri>')
+def play_track(uri):
+    """Remote controls Spotify to play the specific track."""
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
+
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+
+    try:
+        # This tells the active Spotify device to play this URI
+        sp.start_playback(uris=[uri])
+        return "Playing", 200
+    except spotipy.exceptions.SpotifyException as e:
+        # This usually happens if no Spotify device is active
+        return "No active device found. Open Spotify on your computer or phone.", 404
 
 
 if __name__ == '__main__':
