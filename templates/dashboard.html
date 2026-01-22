@@ -6,22 +6,27 @@
         body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
-        .btn { background: #1DB954; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 20px; }
+        .btn { background: #287a43; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
     <div class="header">
-    <h1>🏆 Elo Leaderboard</h1>
+    <div style="display: flex; align-items: baseline; gap: 15px;">
+        <h1>🏆 Elo Leaderboard</h1>
+        {% if not first_run %}
+            <span style="color: #888; font-size: 1.1rem; font-weight: normal;">
+                {{ total_matches }} matches played
+            </span>
+        {% endif %}
+    </div>
+
     <div style="display: flex; gap: 10px;">
         {% if not first_run %}
-            <a href="/sync" class="btn" style="background: #2E77D0;">☁️ Sync to Spotify</a>
-
-            <a href="/rank" class="btn" style="background: #4ca615;">⚔️ Start Ranking</a>
-
-            <a href="/reset" class="btn" style="background: #681414;" onclick="return confirm('Are you sure? This will wipe all rankings!');">🧨 Reset Ratings</a>
+            <a href="/sync" class="btn" style="background: #25529c;">☁️ Sync to Spotify</a>
+            <a href="/rank" class="btn" style="background: #146c43;">⚔️ Start Ranking</a>
+            <a href="/reset" class="btn" style="background: #671111;" onclick="return confirm('Are you sure? This will wipe all rankings!');">💣 Reset Ratings</a>
         {% endif %}
-
         <a href="/ingest" class="btn" style="background:#333;">🔄 Update Tracklist</a>
     </div>
 </div>

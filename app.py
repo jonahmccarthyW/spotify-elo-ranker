@@ -71,10 +71,15 @@ def dashboard():
     token_info = auth_manager.cache_handler.get_cached_token()
     is_logged_in = auth_manager.validate_token(token_info) if token_info else False
 
-    # Sort songs by rating (descending)
     sorted_songs = sorted(db.values(), key=lambda x: x['rating'], reverse=True) if db else []
 
-    return render_template('dashboard.html', songs=sorted_songs, first_run=(not db), logged_in=is_logged_in)
+    total_matches = sum(s['matches'] for s in db.values()) // 2 if db else 0
+
+    return render_template('dashboard.html',
+                           songs=sorted_songs,
+                           first_run=(not db),
+                           logged_in=is_logged_in,
+                           total_matches=total_matches)
 
 
 @app.route('/login')
@@ -154,7 +159,15 @@ def rank():
         loser = request.form.get('loser')
 
         if winner in db and loser in db:
-            new_w, new_l = calculate_new_ratings(db[winner]['rating'], db[loser]['rating'], 1)
+            # --- UPDATED CALL ---
+            # We now pass the match counts for both songs
+            new_w, new_l = calculate_new_ratings(
+                db[winner]['rating'],
+                db[loser]['rating'],
+                1,
+                db[winner]['matches'],  # Pass winner's match count
+                db[loser]['matches']  # Pass loser's match count
+            )
 
             db[winner]['rating'] = new_w
             db[winner]['matches'] += 1
@@ -221,10 +234,22 @@ def sync_playlist():
 @app.route('/reset')
 def reset_elos():
     db = load_db()
-    for uri in db:
-        db[uri]['rating'] = 1000.0
-        db[uri]['matches'] = 0
-    save_db(db)
+
+    # 1. Convert dictionary values to a list so we can shuffle them
+    songs_list = list(db.values())
+
+    # 2. Reset stats and Shuffle the list
+    for song in songs_list:
+        song['rating'] = 1000.0
+        song['matches'] = 0
+
+    # This randomizes the position of every song
+    random.shuffle(songs_list)
+
+    # 3. Rebuild the dictionary with the new random insertion order
+    new_db = {song['uri']: song for song in songs_list}
+
+    save_db(new_db)
     return redirect(url_for('dashboard'))
 
 
