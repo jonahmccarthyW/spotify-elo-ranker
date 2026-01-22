@@ -117,11 +117,10 @@
             fetch('/skip_forward')
             .then(response => {
                 if (response.ok) {
-                    // Temporarily show skip status, then revert?
-                    // Simpler logic: just show skipped, it will likely be overwritten by the next action
+                    // Show “skipped forward 10 s” for 2 s, then let the next status update take over.
                     const prevText = statusDiv.innerText;
                     statusDiv.innerText = "⏩ Skipped forward 10s";
-                    setTimeout(() => statusDiv.innerText = prevText, 2000);
+                    setTimeout(() => statusDiv.innerText = prevText, 800);
                 }
             });
         }
