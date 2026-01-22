@@ -86,6 +86,12 @@ def login():
     return redirect(auth_manager.get_authorize_url())
 
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/callback')
 def callback():
     auth_manager = create_auth_manager()

@@ -22,12 +22,18 @@
     </div>
 
     <div style="display: flex; gap: 10px;">
-        {% if not first_run %}
-            <a href="/sync" class="btn" style="background: #25529c;">☁️ Sync to Spotify</a>
-            <a href="/rank" class="btn" style="background: #146c43;">⚔️ Start Ranking</a>
-            <a href="/reset" class="btn" style="background: #671111;" onclick="return confirm('Are you sure? This will wipe all rankings!');">💣 Reset Ratings</a>
+        {% if logged_in %}
+            {% if not first_run %}
+                <a href="/sync" class="btn" style="background: #25529c;">☁️ Sync to Spotify</a>
+                <a href="/rank" class="btn" style="background: #146c43;">⚔️ Start Ranking</a>
+                <a href="/reset" class="btn" style="background: #671111;" onclick="return confirm('Are you sure? This will wipe all rankings!');">💣 Reset Ratings</a>
+            {% endif %}
+
+            <a href="/ingest" class="btn" style="background:#333;">Update Tracklist</a>
+            <a href="/logout" class="btn" style="background: #555;">Logout</a>
+        {% else %}
+            <a href="/login" class="btn" style="background: #146c43;">Login with Spotify</a>
         {% endif %}
-        <a href="/ingest" class="btn" style="background:#333;">🔄 Update Tracklist</a>
     </div>
 </div>
 
