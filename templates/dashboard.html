@@ -6,39 +6,47 @@
         body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
-        .btn { background: #287a43; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: #287a43; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 20px; display: inline-block; margin-top: 5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .sub-nav { display: flex; gap: 10px; }
+        .playlist-badge { background: #333; padding: 5px 15px; border-radius: 10px; color: #1DB954; font-weight: bold; font-size: 0.9rem; }
     </style>
 </head>
 <body>
     <div class="header">
-    <div style="display: flex; align-items: baseline; gap: 15px;">
-        <h1>🏆 Elo Leaderboard</h1>
-        {% if not first_run %}
-            <span style="color: #888; font-size: 1.1rem; font-weight: normal;">
-                {{ total_matches }} matches played
-            </span>
-        {% endif %}
-    </div>
-
-    <div style="display: flex; gap: 10px;">
-        {% if logged_in %}
+        <div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1>🏆 Leaderboard</h1>
+                <span class="playlist-badge">{{ playlist_name }}</span>
+            </div>
             {% if not first_run %}
-                <a href="/sync" class="btn" style="background: #25529c;">☁️ Sync to Spotify</a>
-                <a href="/rank" class="btn" style="background: #146c43;">⚔️ Start Ranking</a>
-                <a href="/reset" class="btn" style="background: #671111;" onclick="return confirm('Are you sure? This will wipe all rankings!');">💣 Reset Ratings</a>
+                <span style="color: #888; font-size: 1.1rem;">
+                    {{ total_matches }} matches played
+                </span>
             {% endif %}
+        </div>
 
-            <a href="/ingest" class="btn" style="background:#333;">Update Tracklist</a>
-            <a href="/logout" class="btn" style="background: #555;">Logout</a>
-        {% else %}
-            <a href="/login" class="btn" style="background: #146c43;">Login with Spotify</a>
-        {% endif %}
+        <div class="sub-nav">
+            <a href="/" class="btn" style="background: #333; border: 1px solid #555;">Switch Playlist</a>
+
+            {% if logged_in %}
+                {% if not first_run %}
+                    <a href="/push" class="btn" style="background: #25529c;">☁️ Push to Spotify</a>
+                    <a href="/rank" class="btn" style="background: #146c43;">⚔️ Rank</a>
+                    <a href="/reset" class="btn" style="background: #671111;" onclick="return confirm('Wipe all ratings for this playlist?');">💣 Reset</a>
+                {% endif %}
+                <a href="/ingest" class="btn" style="background:#555;">Fetch Songs</a>
+            {% else %}
+                <a href="/login" class="btn" style="background: #146c43;">Login</a>
+            {% endif %}
+        </div>
     </div>
-</div>
 
     {% if first_run %}
-        <p>No data found. Click "Fetch Playlist" to load songs from Spotify.</p>
+        <div style="text-align: center; margin-top: 50px;">
+            <h2>Fresh Playlist!</h2>
+            <p>Click <b>Fetch Songs</b> to import tracks from Spotify.</p>
+        </div>
     {% else %}
         <table>
             <tr>

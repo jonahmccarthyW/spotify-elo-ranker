@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Elo Ranker - Lobby</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #1DB954; font-size: 2.5rem; margin-bottom: 30px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
+
+        .card { background: #282828; padding: 20px; border-radius: 10px; text-align: center; transition: 0.2s; cursor: pointer; text-decoration: none; color: white; display: flex; flex-direction: column; align-items: center; }
+        .card:hover { background: #333; transform: translateY(-5px); }
+        .card img { width: 150px; height: 150px; object-fit: cover; border-radius: 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .card h3 { margin: 0; font-size: 1.1rem; }
+
+        .add-form { margin-top: 40px; background: #1a1a1a; padding: 20px; border-radius: 10px; width: 100%; max-width: 500px; text-align: center; border: 1px solid #333; }
+        input { padding: 10px; width: 70%; border-radius: 5px; border: none; }
+        button { background: #1DB954; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1ed760; }
+    </style>
+</head>
+<body>
+
+    <h1>🎵 Select a Playlist</h1>
+
+    <div class="grid">
+        {% for pid, pdata in playlists.items() %}
+            <a href="/select_playlist/{{ pid }}" class="card">
+                <img src="{{ pdata.image }}" onerror="this.src='https://via.placeholder.com/150?text=No+Img'">
+                <h3>{{ pdata.name }}</h3>
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="add-form">
+        <h3>Add New Playlist</h3>
+        <form action="/add_playlist" method="POST">
+            <input type="text" name="playlist_id" placeholder="Paste Spotify Playlist ID or URL" required>
+            <button type="submit">Add</button>
+        </form>
+        <p style="color: #777; font-size: 0.8rem; margin-top: 10px;">
+            Note: You must be logged in to fetch playlist metadata.
+        </p>
+        <a href="/login" style="color:#1DB954;">Login First</a>
+    </div>
+
+</body>
+</html>
