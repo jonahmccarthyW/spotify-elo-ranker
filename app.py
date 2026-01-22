@@ -159,13 +159,11 @@ def rank():
         return "Not enough songs to rank! Please <a href='/ingest'>Sync Playlist</a> first."
 
     if request.method == 'POST':
-        action = request.form.get('action')
-
-        # Logic for Skipping
-        if action == 'skip':
+        # --- SKIP LOGIC ---
+        if 'skip' in request.form:
             return redirect(url_for('rank'))
 
-        # Logic for Voting
+        # --- RANKING LOGIC ---
         winner = request.form.get('winner')
         loser = request.form.get('loser')
 
@@ -187,32 +185,26 @@ def rank():
 
         return redirect(url_for('rank'))
 
-    # --- UPDATED MATCHMAKING LOGIC ---
+    # --- MATCHMAKING LOGIC ---
 
-    # Priority 1: Strictly 0 matches (Placement)
+    # Priority 1: Strictly 0 matches (Get everyone on the board first)
     zero_matches = [u for u in uris if db[u]['matches'] == 0]
 
-    # Priority 2: Less than 5 matches (Calibration)
-    low_matches = [u for u in uris if db[u]['matches'] < 5]
+    # Priority 2: Calibration (< 5 matches)
+    calibration = [u for u in uris if db[u]['matches'] < 5]
 
     if len(zero_matches) >= 2:
-        # Pit two unplayed songs against each other
+        # Case A: Pit two unplayed songs against each other
         id_a, id_b = random.sample(zero_matches, 2)
-        print("DEBUG: Matchmaking Tier 1 (Both 0 matches)")
-
     elif len(zero_matches) == 1:
-        # Pit the single unplayed song against a random opponent
+        # Case B: Pit the single unplayed song against a random opponent
         id_a = zero_matches[0]
         id_b = random.choice([u for u in uris if u != id_a])
-        print("DEBUG: Matchmaking Tier 1 (One 0 match)")
-
-    elif len(low_matches) >= 2:
-        # Pit calibration songs together
-        id_a, id_b = random.sample(low_matches, 2)
-        print("DEBUG: Matchmaking Tier 2 (Calibration < 5)")
-
+    elif len(calibration) >= 2:
+        # Case C: Prioritize songs that need calibration
+        id_a, id_b = random.sample(calibration, 2)
     else:
-        # Tier 3: Standard Elo Matchmaking (Find close games)
+        # Case D: Standard Matchmaking (Find close games)
         id_a = random.choice(uris)
         rating_a = db[id_a]['rating']
 
@@ -221,10 +213,9 @@ def rank():
 
         if candidates:
             id_b = random.choice(candidates)
-            print("DEBUG: Matchmaking Tier 3 (Fair Match)")
         else:
+            # Fallback: Pick any random opponent
             id_b = random.choice([u for u in uris if u != id_a])
-            print("DEBUG: Matchmaking Tier 3 (Random Fallback)")
 
     return render_template('rank.html', song_a=db[id_a], song_b=db[id_b])
 
