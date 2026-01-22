@@ -8,11 +8,65 @@
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
 
-        .card { background: #282828; padding: 20px; border-radius: 10px; text-align: center; transition: 0.2s; cursor: pointer; text-decoration: none; color: white; display: flex; flex-direction: column; align-items: center; }
+        /* --- CARD STYLES --- */
+        .card {
+            background: #282828;
+            border-radius: 10px;
+            position: relative; /* Essential for the delete button positioning */
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
         .card:hover { background: #333; transform: translateY(-5px); }
-        .card img { width: 150px; height: 150px; object-fit: cover; border-radius: 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .card h3 { margin: 0; font-size: 1.1rem; }
 
+        /* Clickable area for the playlist selection */
+        .card-link {
+            text-decoration: none;
+            color: white;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card img { width: 150px; height: 150px; object-fit: cover; border-radius: 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .card h3 { margin: 0; font-size: 1.1rem; text-align: center; }
+
+        /* --- DELETE BUTTON STYLES --- */
+        .delete-form {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 10;
+        }
+
+        .btn-delete {
+            background: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+            color: #848484;
+            border: none;
+            border-radius: 50%; /* Perfect circle */
+            width: 22px;  /* Small, but clickable */
+            height: 22px;
+            cursor: pointer;
+            font-size: 12px; /* Small font to fit the small circle */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s ease;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .btn-delete:hover {
+            background: #ff5555;
+            color: white;
+            transform: scale(1.1); /* Slight pop on hover */
+        }`
+
+        /* --- ADD FORM STYLES (Restored) --- */
         .add-form { margin-top: 40px; background: #1a1a1a; padding: 20px; border-radius: 10px; width: 100%; max-width: 500px; text-align: center; border: 1px solid #333; }
         input { padding: 10px; width: 70%; border-radius: 5px; border: none; }
         button { background: #1DB954; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -24,12 +78,19 @@
     <h1>🎵 Select a Playlist</h1>
 
     <div class="grid">
-        {% for pid, pdata in playlists.items() %}
-            <a href="/select_playlist/{{ pid }}" class="card">
+    {% for pid, pdata in playlists.items() %}
+        <div class="card">
+            <form action="/delete_playlist/{{ pid }}" method="POST" class="delete-form" 
+                  onsubmit="return confirm('Permanently delete {{ pdata.name }} and all rankings?');">
+                <button type="submit" class="btn-delete" title="Delete Playlist">✕</button>
+            </form>
+
+            <a href="/select_playlist/{{ pid }}" class="card-link">
                 <img src="{{ pdata.image }}" onerror="this.src='https://via.placeholder.com/150?text=No+Img'">
                 <h3>{{ pdata.name }}</h3>
             </a>
-        {% endfor %}
+        </div>
+    {% endfor %}
     </div>
 
     <div class="add-form">
@@ -46,3 +107,5 @@
 
 </body>
 </html>
+
+```

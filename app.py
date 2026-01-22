@@ -1,7 +1,6 @@
 import json
 import os
 import random
-import time
 
 import spotipy
 from dotenv import load_dotenv
@@ -138,6 +137,31 @@ def add_playlist():
 
     except Exception as e:
         return f"Error adding playlist. Is the ID correct? Spotify says: {e}"
+
+
+@app.route('/delete_playlist/<playlist_id>', methods=['POST'])
+def delete_playlist(playlist_id):
+    """Removes a playlist from the manifest and deletes its data file."""
+    # 1. Update Manifest
+    manifest = load_manifest()
+    if playlist_id in manifest:
+        del manifest[playlist_id]
+        save_manifest(manifest)
+
+    # 2. Delete the physical JSON file
+    file_path = get_db_path(playlist_id)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass # File might already be gone, ignore error
+
+    # 3. Clear session if this was the active playlist
+    if session.get('active_playlist_id') == playlist_id:
+        session.pop('active_playlist_id', None)
+        session.pop('active_playlist_name', None)
+
+    return redirect(url_for('lobby'))
 
 
 @app.route('/select_playlist/<playlist_id>')
