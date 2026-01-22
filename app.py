@@ -4,7 +4,7 @@ import random
 
 import spotipy
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from spotipy.cache_handler import FlaskSessionCacheHandler
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -154,7 +154,7 @@ def delete_playlist(playlist_id):
         try:
             os.remove(file_path)
         except OSError:
-            pass # File might already be gone, ignore error
+            pass  # File might already be gone, ignore error
 
     # 3. Clear session if this was the active playlist
     if session.get('active_playlist_id') == playlist_id:
@@ -291,13 +291,15 @@ def rank():
         return f"Not enough songs! <a href='/ingest'>Fetch Songs for {session['active_playlist_name']}</a> first."
 
     if request.method == 'POST':
-        if 'skip' in request.form:
+        # Handle "next match without vote" (auto-advance or manual next)
+        if 'next_match' in request.form:
             return redirect(url_for('rank'))
 
+        # Handle actual vote
         winner = request.form.get('winner')
         loser = request.form.get('loser')
 
-        if winner in db and loser in db:
+        if winner and loser and winner in db and loser in db:
             new_w, new_l = calculate_new_ratings(
                 db[winner]['rating'], db[loser]['rating'], 1,
                 db[winner]['matches'], db[loser]['matches']
@@ -307,6 +309,10 @@ def rank():
             db[loser]['rating'] = new_l
             db[loser]['matches'] += 1
             save_db(pid, db)
+
+            # Return JSON for AJAX vote confirmation
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': True, 'winner_uri': winner})
 
         return redirect(url_for('rank'))
 
@@ -379,18 +385,74 @@ def reset_elos():
     return redirect(url_for('dashboard'))
 
 
-# --- PLAYER CONTROLS (Unchanged) ---
-@app.route('/skip_forward')
-def skip_forward():
-    # ... (Same as original code)
+# --- NEW API ENDPOINTS ---
+
+@app.route('/api/playback_status')
+def playback_status():
+    """Returns current playback state for polling."""
     auth_manager = create_auth_manager()
-    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()): return "Unauthorized", 401
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return jsonify({'error': 'Unauthorized'}), 401
+
     sp = spotipy.Spotify(auth_manager=auth_manager)
     try:
         playback = sp.current_playback()
-        if not playback or not playback.get('is_playing'): return "Paused", 400
+        if not playback or not playback.get('item'):
+            return jsonify({
+                'is_playing': False,
+                'current_uri': None,
+                'progress_ms': 0,
+                'duration_ms': 0
+            })
+
+        return jsonify({
+            'is_playing': playback.get('is_playing', False),
+            'current_uri': playback['item']['uri'],
+            'progress_ms': playback.get('progress_ms', 0),
+            'duration_ms': playback['item']['duration_ms']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/toggle_playback', methods=['POST'])
+def toggle_playback():
+    """Toggles between pause and play."""
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+    try:
+        playback = sp.current_playback()
+        if not playback:
+            return jsonify({'error': 'No active device'}), 404
+
+        if playback.get('is_playing'):
+            sp.pause_playback()
+            return jsonify({'action': 'paused', 'is_playing': False})
+        else:
+            sp.start_playback()
+            return jsonify({'action': 'resumed', 'is_playing': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- PLAYER CONTROLS ---
+
+@app.route('/skip_forward')
+def skip_forward():
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+    try:
+        playback = sp.current_playback()
+        if not playback or not playback.get('is_playing'):
+            return "Paused", 400
         new_pos = playback['progress_ms'] + 10000
-        if new_pos > playback['item']['duration_ms']: new_pos = playback['item']['duration_ms'] - 1000
+        if new_pos > playback['item']['duration_ms']:
+            new_pos = playback['item']['duration_ms'] - 1000
         sp.seek_track(new_pos)
         return "Skipped", 200
     except Exception as e:
@@ -399,13 +461,14 @@ def skip_forward():
 
 @app.route('/play_match')
 def play_match_pair():
-    # ... (Same as original code)
     auth_manager = create_auth_manager()
-    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()): return "Unauthorized", 401
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
     sp = spotipy.Spotify(auth_manager=auth_manager)
     uri_a = request.args.get('uri_a')
     uri_b = request.args.get('uri_b')
-    if not uri_a or not uri_b: return "Missing URIs", 400
+    if not uri_a or not uri_b:
+        return "Missing URIs", 400
     try:
         sp.start_playback(uris=[uri_a, uri_b])
         return "Playing Match", 200
@@ -415,9 +478,9 @@ def play_match_pair():
 
 @app.route('/play/<path:uri>')
 def play_track(uri):
-    # ... (Same as original code)
     auth_manager = create_auth_manager()
-    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()): return "Unauthorized", 401
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
     sp = spotipy.Spotify(auth_manager=auth_manager)
     try:
         sp.start_playback(uris=[uri])
