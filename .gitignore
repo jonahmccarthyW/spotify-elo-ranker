@@ -2,5 +2,6 @@
 .venv/
 __pycache__/
 .idea/
-"*.tmp" 
-"songs.json" 
+*.tmp
+songs.json
+songs.json.tmp
