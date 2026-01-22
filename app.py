@@ -25,9 +25,7 @@ REDIRECT_URI = os.getenv('SPOTIPY_REDIRECT_URI', 'http://127.0.0.1:5000/callback
 # App Config
 TARGET_PLAYLIST_ID = '4lJhU5XSMgOpHyuZxbyP0Z'
 DB_FILE = 'songs.json'
-SCOPE = "user-library-read playlist-read-private playlist-modify-private playlist-modify-public user-modify-playback-state"
-
-# --- AUTH MANAGER ---
+SCOPE = "user-library-read playlist-read-private playlist-modify-private playlist-modify-public user-modify-playback-state user-read-playback-state"# --- AUTH MANAGER ---
 def create_auth_manager():
     return SpotifyOAuth(
         client_id=CLIENT_ID,
@@ -253,9 +251,8 @@ def reset_elos():
     return redirect(url_for('dashboard'))
 
 
-@app.route('/play/<path:uri>')
-def play_track(uri):
-    """Remote controls Spotify to play the specific track."""
+@app.route('/skip_forward')
+def skip_forward():
     auth_manager = create_auth_manager()
     if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
         return "Unauthorized", 401
@@ -263,13 +260,78 @@ def play_track(uri):
     sp = spotipy.Spotify(auth_manager=auth_manager)
 
     try:
-        # This tells the active Spotify device to play this URI
+        # 1. Get current state
+        playback = sp.current_playback()
+
+        # Debugging: Print to your terminal to see what's happening
+        if not playback:
+            print("DEBUG: Spotify returned No Playback State.")
+            return "Spotify is syncing... try again in a second.", 404
+
+        if not playback.get('is_playing'):
+            print("DEBUG: Track is paused.")
+            return "Track is paused", 400
+
+        # 2. Calculate new time
+        current_ms = playback['progress_ms']
+        duration_ms = playback['item']['duration_ms']
+        new_pos = current_ms + 10000  # +10 seconds
+
+        print(f"DEBUG: Skipping from {current_ms} to {new_pos}")
+
+        # 3. Safety check: Don't skip past the end of the song
+        if new_pos > duration_ms:
+            new_pos = duration_ms - 1000  # Go to 1 second before end
+
+        sp.seek_track(new_pos)
+        return "Skipped", 200
+
+    except Exception as e:
+        print(f"ERROR: {e}")
+        return str(e), 500
+
+@app.route('/play_match')
+def play_match_pair():
+    """
+    Auto-plays: Plays A immediately, queues B.
+    """
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
+
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+
+    uri_a = request.args.get('uri_a')
+    uri_b = request.args.get('uri_b')
+
+    if not uri_a or not uri_b:
+        return "Missing URIs", 400
+
+    try:
+        # Replaces context with [A, B]
+        sp.start_playback(uris=[uri_a, uri_b])
+        return "Playing Match", 200
+    except spotipy.exceptions.SpotifyException:
+        return "No active device found.", 404
+
+
+@app.route('/play/<path:uri>')
+def play_track(uri):
+    """
+    Manual override: Plays a specific single track.
+    """
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
+
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+
+    try:
+        # Replaces context with just [A]
         sp.start_playback(uris=[uri])
         return "Playing", 200
-    except spotipy.exceptions.SpotifyException as e:
-        # This usually happens if no Spotify device is active
-        return "No active device found. Open Spotify on your computer or phone.", 404
-
+    except spotipy.exceptions.SpotifyException:
+        return "No active device found.", 404
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
