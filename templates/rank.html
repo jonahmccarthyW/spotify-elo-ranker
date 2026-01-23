@@ -4,53 +4,66 @@
     <title>Vote!</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: white; text-align: center; }
-        .arena { display: flex; justify-content: center; align-items: center; height: 80vh; gap: 40px; }
+        .arena { display: flex; justify-content: center; align-items: center; height: 75vh; gap: 40px; }
 
         /* --- CARD STYLES --- */
         .card {
             background: #282828; padding: 20px; border-radius: 10px; width: 300px;
             display: flex; flex-direction: column; position: relative; transition: 0.3s;
         }
-        .card.winner {
-            background: #1a4d2e;
-            box-shadow: 0 0 20px rgba(29, 185, 84, 0.5);
-        }
-        .card.loser {
-            background: #1a1a1a;
-            opacity: 0.6;
-        }
+        .card.winner { background: #1a4d2e; box-shadow: 0 0 20px rgba(29, 185, 84, 0.5); }
+        .card.loser { background: #1a1a1a; opacity: 0.6; }
 
         img { width: 100%; border-radius: 5px; margin-bottom: 15px; }
 
-        /* Song Title */
-        h2 {
-            margin: 10px 0 5px 0;
-            font-size: 1.2rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: white; /* Always white */
-        }
-
+        h2 { margin: 10px 0 5px 0; font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; }
         p { color: #b3b3b3; margin-bottom: 20px; font-size: 0.9rem; }
 
-        /* --- CHECKMARK --- */
-        .checkmark {
-            position: absolute;
-            top: -50px; right: -20px;
-            font-size: 10rem; color: #1DB954;
-            opacity: 0; transform: scale(0);
-            transition: all 0.4s ease;
-            z-index: 10;
+        /* --- PROGRESS BAR STYLES (NEW) --- */
+        .progress-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #b3b3b3;
+            font-size: 0.8rem;
+            font-family: monospace;
         }
-        .checkmark.show { opacity: 1; transform: scale(1); }
+
+        /* The Slider itself */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #4f4f4f;
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        /* The Slider Thumb (The dot you drag) */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+        /* Active Green Color logic is handled in JS via background gradients */
 
         /* --- BUTTONS --- */
         .btn-vote {
             background: #0ca55d; border: none; padding: 15px 30px;
             color: #000000; font-size: 1rem; cursor: pointer;
-            border-radius: 30px; width: 100%; transition: 0.2s; font-weight: bold;
-            margin-top: auto;
+            border-radius: 30px; width: 100%; transition: 0.2s; font-weight: bold; margin-top: auto;
         }
         .btn-vote:hover { transform: scale(1.05); background: #1ed760; }
         .btn-vote:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
@@ -62,15 +75,12 @@
         }
         .btn-play:hover { border-color: white; color: white; background: rgba(255,255,255,0.1); }
 
-        /* Active Play Button Style */
         .btn-playing {
-            border-color: #1DB954 !important;
-            color: #1DB954 !important;
+            border-color: #1DB954 !important; color: #1DB954 !important;
             background: rgba(29, 185, 84, 0.1) !important;
             box-shadow: 0 0 10px rgba(29, 185, 84, 0.2);
         }
 
-        /* --- CENTER CONTROLS --- */
         .center-col { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .vs { font-size: 2rem; font-weight: bold; color: #555; }
 
@@ -81,13 +91,17 @@
         }
         .btn-next:hover { background: #1ed760; transform: scale(1.05); }
 
-        .controls { margin-top: -20px; margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; }
+        .controls { margin-top: 10px; margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; }
         .btn-control {
             background: #333; color: white; border: none;
             padding: 10px 20px; border-radius: 50px; cursor: pointer;
             font-size: 0.9rem; display: flex; align-items: center; gap: 5px; transition: 0.2s;
         }
         .btn-control:hover { background: #444; }
+
+        /* Checkmark (unchanged) */
+        .checkmark { position: absolute; top: -50px; right: -20px; font-size: 10rem; color: #1DB954; opacity: 0; transform: scale(0); transition: all 0.4s ease; z-index: 10; }
+        .checkmark.show { opacity: 1; transform: scale(1); }
     </style>
 </head>
 <body>
@@ -96,18 +110,10 @@
         <div class="card" id="cardA">
             <div class="checkmark" id="checkA">✓</div>
             <img src="{{ song_a.image }}">
-
             <h2 id="titleA">{{ song_a.name }}</h2>
             <p>{{ song_a.artist }}</p>
-
-            <button type="button" class="btn-play" id="btnPlayA"
-                onclick="playSingleSong('{{ song_a.uri }}')">
-                ▶ Play
-            </button>
-
-            <button type="button" class="btn-vote" id="voteA" onclick="castVote('{{ song_a.uri }}', '{{ song_b.uri }}')">
-                Vote Left
-            </button>
+            <button type="button" class="btn-play" id="btnPlayA" onclick="playSingleSong('{{ song_a.uri }}')">▶ Play</button>
+            <button type="button" class="btn-vote" id="voteA" onclick="castVote('{{ song_a.uri }}', '{{ song_b.uri }}')">Vote Left</button>
         </div>
 
         <div class="center-col">
@@ -121,28 +127,21 @@
         <div class="card" id="cardB">
             <div class="checkmark" id="checkB">✓</div>
             <img src="{{ song_b.image }}">
-
             <h2 id="titleB">{{ song_b.name }}</h2>
             <p>{{ song_b.artist }}</p>
-
-            <button type="button" class="btn-play" id="btnPlayB"
-                onclick="playSingleSong('{{ song_b.uri }}')">
-                ▶ Play
-            </button>
-
-            <button type="button" class="btn-vote" id="voteB" onclick="castVote('{{ song_b.uri }}', '{{ song_a.uri }}')">
-                Vote Right
-            </button>
+            <button type="button" class="btn-play" id="btnPlayB" onclick="playSingleSong('{{ song_b.uri }}')">▶ Play</button>
+            <button type="button" class="btn-vote" id="voteB" onclick="castVote('{{ song_b.uri }}', '{{ song_a.uri }}')">Vote Right</button>
         </div>
     </div>
 
+    <div class="progress-container">
+        <span id="currTime">0:00</span>
+        <input type="range" id="progressBar" value="0" min="0" max="100" oninput="isDragging = true" onchange="seekTrack()">
+        <span id="totTime">0:00</span>
+    </div>
+
     <div class="controls">
-        <button class="btn-control" id="playPauseBtn" onclick="togglePlayback()">
-            ⏸️ Pause
-        </button>
-        <button class="btn-control" onclick="skipForward()">
-            ⏩ Skip 10s
-        </button>
+        <button class="btn-control" id="playPauseBtn" onclick="togglePlayback()">⏸️ Pause</button>
     </div>
 
     <div style="text-align: center; margin-top: 10px;">
@@ -156,38 +155,60 @@
 
         // --- STATE ---
         let hasVoted = false;
-        let playbackMode = 'pair'; // 'pair' or 'single'
+        let playbackMode = 'pair';
         let isPlaying = true;
         let pollInterval = null;
+        let isDragging = false; // Prevents bar from jumping while you click it
 
         // --- DOM ELEMENTS ---
         const playPauseBtn = document.getElementById('playPauseBtn');
         const btnPlayA = document.getElementById('btnPlayA');
         const btnPlayB = document.getElementById('btnPlayB');
+        const progressBar = document.getElementById('progressBar');
+        const currTimeSpan = document.getElementById('currTime');
+        const totTimeSpan = document.getElementById('totTime');
 
         // --- INIT ---
         window.addEventListener('load', function() {
-            // Start pair playback
             fetch(`/play_match?uri_a=${songAUri}&uri_b=${songBUri}`)
             .then(r => {
                 if (r.ok) {
                     playbackMode = 'pair';
                     startPolling();
-                } else {
-                    console.error("Spotify Connect Error");
                 }
             });
         });
 
-        // --- ACTIONS ---
+        // --- SEEKING LOGIC (NEW) ---
+        function formatTime(ms) {
+            if (!ms) return "0:00";
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
 
+        function seekTrack() {
+            // Calculate MS based on slider percentage
+            const newMs = progressBar.value;
+
+            // Optimistic Update: Update text immediately
+            currTimeSpan.innerText = formatTime(newMs);
+
+            // Send to backend
+            fetch(`/seek?position_ms=${newMs}`).then(() => {
+                isDragging = false; // Allow polling to resume updating the bar
+                checkPlaybackStatus(); // Force sync
+            });
+        }
+
+        // --- PLAYER ACTIONS ---
         function playSingleSong(uri) {
             fetch('/play/' + uri).then(r => {
                 if (r.ok) {
                     playbackMode = 'single';
                     isPlaying = true;
                     playPauseBtn.innerHTML = '⏸️ Pause';
-                    // Force an immediate check
                     setTimeout(checkPlaybackStatus, 500);
                 }
             });
@@ -199,19 +220,13 @@
             .then(data => {
                 if (data.is_playing !== undefined) {
                     isPlaying = data.is_playing;
-                    // Force UI update immediately
                     checkPlaybackStatus();
                 }
             });
         }
 
-        function skipForward() {
-            fetch('/skip_forward');
-        }
-
         function castVote(winner, loser) {
             if (hasVoted) return;
-
             const formData = new FormData();
             formData.append('winner', winner);
             formData.append('loser', loser);
@@ -226,12 +241,11 @@
                 if (data.success) {
                     hasVoted = true;
                     showVoteConfirmation(winner);
-
-                    // Disable buttons
                     document.getElementById('voteA').disabled = true;
                     document.getElementById('voteB').disabled = true;
                     document.getElementById('btnPlayA').disabled = true;
                     document.getElementById('btnPlayB').disabled = true;
+                    progressBar.disabled = true; // Disable seeking after vote
                 }
             });
         }
@@ -254,9 +268,8 @@
         }
 
         // --- POLLING LOOP ---
-
         function startPolling() {
-            pollInterval = setInterval(checkPlaybackStatus, 1000); // Check every second
+            pollInterval = setInterval(checkPlaybackStatus, 1000);
         }
 
         function checkPlaybackStatus() {
@@ -265,21 +278,18 @@
             .then(data => {
                 if (data.error) return;
 
-                // 1. UPDATE PLAY BUTTON (Global)
+                // 1. UPDATE PLAY BUTTON
                 if (data.is_playing !== isPlaying) {
                     isPlaying = data.is_playing;
                     playPauseBtn.innerHTML = isPlaying ? '⏸️ Pause' : '▶️ Play';
                 }
 
-                // 2. UPDATE BUTTON STATES
-                // Reset defaults
+                // 2. UPDATE BUTTON STYLES
                 btnPlayA.classList.remove('btn-playing');
                 btnPlayA.innerText = "▶ Play";
-
                 btnPlayB.classList.remove('btn-playing');
                 btnPlayB.innerText = "▶ Play";
 
-                // Highlight active button only
                 if (data.is_playing && data.current_uri) {
                     if (data.current_uri === songAUri) {
                         btnPlayA.classList.add('btn-playing');
@@ -290,15 +300,23 @@
                     }
                 }
 
-                // 3. AUTO ADVANCE LOGIC
-                const timeRemaining = data.duration_ms - data.progress_ms;
+                // 3. UPDATE PROGRESS BAR
+                if (!isDragging && data.duration_ms > 0) {
+                    progressBar.max = data.duration_ms;
+                    progressBar.value = data.progress_ms;
 
-                // If song is almost over (< 2s)
+                    currTimeSpan.innerText = formatTime(data.progress_ms);
+                    totTimeSpan.innerText = formatTime(data.duration_ms);
+
+                    // CSS Magic for the "Green Bar" effect
+                    const percent = (data.progress_ms / data.duration_ms) * 100;
+                    progressBar.style.background = `linear-gradient(to right, #1DB954 ${percent}%, #4f4f4f ${percent}%)`;
+                }
+
+                // 4. AUTO ADVANCE
+                const timeRemaining = data.duration_ms - data.progress_ms;
                 if (data.is_playing && timeRemaining < 2000 && timeRemaining > 0) {
-                    if (playbackMode === 'pair' && data.current_uri === songBUri) {
-                        advanceToNextMatch();
-                    }
-                    else if (playbackMode === 'single') {
+                    if ((playbackMode === 'pair' && data.current_uri === songBUri) || playbackMode === 'single') {
                         advanceToNextMatch();
                     }
                 }
@@ -308,11 +326,9 @@
 
         function advanceToNextMatch() {
             clearInterval(pollInterval);
-            // Submit form to reload page
             document.getElementById('nextMatchForm').submit();
         }
 
-        // Handle manual next match click
         document.getElementById('nextBtn').addEventListener('click', function(e) {
             clearInterval(pollInterval);
         });

@@ -415,6 +415,25 @@ def playback_status():
         return jsonify({'error': str(e)}), 500
 
 
+
+@app.route('/seek')
+def seek_track():
+    auth_manager = create_auth_manager()
+    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+        return "Unauthorized", 401
+
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+    position_ms = request.args.get('position_ms')
+
+    try:
+        if position_ms:
+            sp.seek_track(int(position_ms))
+            return "Seeked", 200
+        return "Missing position", 400
+    except Exception as e:
+        return str(e), 500
+
+
 @app.route('/toggle_playback', methods=['POST'])
 def toggle_playback():
     """Toggles between pause and play."""
