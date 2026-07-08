@@ -102,6 +102,24 @@
         /* Checkmark (unchanged) */
         .checkmark { position: absolute; top: -50px; right: -20px; font-size: 10rem; color: #1DB954; opacity: 0; transform: scale(0); transition: all 0.4s ease; z-index: 10; }
         .checkmark.show { opacity: 1; transform: scale(1); }
+
+        /* --- INSTANT-ADVANCE TOGGLE --- */
+        .toggle-wrap {
+            display: flex; align-items: center; gap: 10px;
+            color: #b3b3b3; font-size: 0.9rem; cursor: pointer; user-select: none;
+        }
+        .toggle-wrap input { display: none; }
+        .toggle-track {
+            width: 42px; height: 22px; background: #555; border-radius: 999px;
+            position: relative; transition: background 0.2s; flex-shrink: 0;
+        }
+        .toggle-track::after {
+            content: ""; position: absolute; top: 2px; left: 2px;
+            width: 18px; height: 18px; background: #fff; border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        .toggle-wrap input:checked + .toggle-track { background: #1DB954; }
+        .toggle-wrap input:checked + .toggle-track::after { transform: translateX(20px); }
     </style>
 </head>
 <body>
@@ -142,6 +160,12 @@
 
     <div class="controls">
         <button class="btn-control" id="playPauseBtn" onclick="togglePlayback()">⏸️ Pause</button>
+
+        <label class="toggle-wrap" title="Skip to a new pair the moment you vote">
+            <input type="checkbox" id="instantAdvance">
+            <span class="toggle-track"></span>
+            <span>Vote advances to next match</span>
+        </label>
     </div>
 
     <div style="text-align: center; margin-top: 10px;">
@@ -167,6 +191,11 @@
         const progressBar = document.getElementById('progressBar');
         const currTimeSpan = document.getElementById('currTime');
         const totTimeSpan = document.getElementById('totTime');
+        const instantAdvance = document.getElementById('instantAdvance');
+        instantAdvance.checked = localStorage.getItem('elo:instantAdvance') === 'true';
+        instantAdvance.addEventListener('change', function() {
+            localStorage.setItem('elo:instantAdvance', instantAdvance.checked);
+        });
 
         // --- INIT ---
         window.addEventListener('load', function() {
@@ -238,16 +267,21 @@
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) {
-                    hasVoted = true;
-                    showVoteConfirmation(winner);
-                    document.getElementById('voteA').disabled = true;
-                    document.getElementById('voteB').disabled = true;
-                    document.getElementById('btnPlayA').disabled = true;
-                    document.getElementById('btnPlayB').disabled = true;
-                    progressBar.disabled = true; // Disable seeking after vote
+            if (data.success) {
+                hasVoted = true;
+                showVoteConfirmation(winner);
+                document.getElementById('voteA').disabled = true;
+                document.getElementById('voteB').disabled = true;
+                document.getElementById('btnPlayA').disabled = true;
+                document.getElementById('btnPlayB').disabled = true;
+                progressBar.disabled = true; // Disable seeking after vote
+
+                // Toggle on: jump straight to a fresh pair after a brief flash
+                if (instantAdvance.checked) {
+                    setTimeout(advanceToNextMatch, 350);
                 }
-            });
+            }
+        });
         }
 
         function showVoteConfirmation(winnerUri) {
