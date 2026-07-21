@@ -316,25 +316,14 @@ def rank():
 
         return redirect(url_for('rank'))
 
-    # --- MATCHMAKING (Unchanged Logic) ---
-    zero_matches = [u for u in uris if db[u]['matches'] == 0]
-    calibration = [u for u in uris if db[u]['matches'] < 5]
+    # --- MATCHMAKING ---
+    def weight(uri):
+        return 1.0 / (db[uri]['matches'] + 1)
 
-    if len(zero_matches) >= 2:
-        id_a, id_b = random.sample(zero_matches, 2)
-    elif len(zero_matches) == 1:
-        id_a = zero_matches[0]
-        id_b = random.choice([u for u in uris if u != id_a])
-    elif len(calibration) >= 2:
-        id_a, id_b = random.sample(calibration, 2)
-    else:
-        id_a = random.choice(uris)
-        rating_a = db[id_a]['rating']
-        candidates = [u for u in uris if u != id_a and abs(db[u]['rating'] - rating_a) < 100]
-        if candidates:
-            id_b = random.choice(candidates)
-        else:
-            id_b = random.choice([u for u in uris if u != id_a])
+    id_a = random.choices(uris, weights=[weight(u) for u in uris], k=1)[0]
+
+    others = [u for u in uris if u != id_a]
+    id_b = random.choices(others, weights=[weight(u) for u in others], k=1)[0]
 
     return render_template('rank.html', song_a=db[id_a], song_b=db[id_b])
 
