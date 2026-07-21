@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from spotipy.cache_handler import FlaskSessionCacheHandler
 from spotipy.oauth2 import SpotifyOAuth
 
-from elo import calculate_new_ratings
+from elo import calculate_new_ratings, preview_deltas
 
 # --- CONFIGURATION ---
 load_dotenv()
@@ -300,8 +300,10 @@ def rank():
         loser = request.form.get('loser')
 
         if winner and loser and winner in db and loser in db:
+            old_w = db[winner]['rating']
+            old_l = db[loser]['rating']
             new_w, new_l = calculate_new_ratings(
-                db[winner]['rating'], db[loser]['rating'], 1,
+                old_w, old_l, 1,
                 db[winner]['matches'], db[loser]['matches']
             )
             db[winner]['rating'] = new_w
@@ -310,9 +312,14 @@ def rank():
             db[loser]['matches'] += 1
             save_db(pid, db)
 
-            # Return JSON for AJAX vote confirmation
+            # Return JSON with the actual Elo change for each song
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': True, 'winner_uri': winner})
+                return jsonify({
+                    'success': True,
+                    'winner_uri': winner,
+                    'winner_delta': round(new_w - old_w),
+                    'loser_delta': round(new_l - old_l),  # already negative
+                })
 
         return redirect(url_for('rank'))
 
@@ -325,7 +332,22 @@ def rank():
     others = [u for u in uris if u != id_a]
     id_b = random.choices(others, weights=[weight(u) for u in others], k=1)[0]
 
-    return render_template('rank.html', song_a=db[id_a], song_b=db[id_b])
+    # Current leaderboard positions (1-indexed) for the two chosen songs
+    ranked = sorted(uris, key=lambda u: db[u]['rating'], reverse=True)
+    rank_a = ranked.index(id_a) + 1
+    rank_b = ranked.index(id_b) + 1
+    total = len(uris)
+
+    # Elo swing preview for each outcome (no data is changed here)
+    preview = preview_deltas(
+        db[id_a]['rating'], db[id_b]['rating'],
+        db[id_a]['matches'], db[id_b]['matches']
+    )
+
+    return render_template('rank.html',
+                           song_a=db[id_a], song_b=db[id_b],
+                           rank_a=rank_a, rank_b=rank_b, total=total,
+                           preview=preview)
 
 
 @app.route('/push')

@@ -120,6 +120,31 @@
         }
         .toggle-wrap input:checked + .toggle-track { background: #1DB954; }
         .toggle-wrap input:checked + .toggle-track::after { transform: translateX(20px); }
+
+        /* --- RANK BADGE --- */
+        .song-stats {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; margin: -5px 0 15px 0;
+        }
+        .rank-badge {
+            background: #333; color: #1DB954; font-weight: bold;
+            padding: 3px 10px; border-radius: 999px; font-size: 0.85rem;
+        }
+        .rank-badge .of { color: #777; font-weight: normal; font-size: 0.75rem; }
+        .rating-val { color: #b3b3b3; font-family: monospace; font-size: 0.9rem; }
+
+        /* --- ELO CHANGE FLASH (after vote) --- */
+        .delta-flash {
+            position: absolute; top: 42%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.4);
+            font-size: 3.5rem; font-weight: bold; font-family: monospace;
+            opacity: 0; pointer-events: none; z-index: 20;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        .delta-flash.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .delta-flash.win { color: #1DB954; }
+        .delta-flash.lose { color: #ff5555; }
     </style>
 </head>
 <body>
@@ -127,9 +152,14 @@
     <div class="arena">
         <div class="card" id="cardA">
             <div class="checkmark" id="checkA">✓</div>
+            <div class="delta-flash" id="deltaA"></div>
             <img src="{{ song_a.image }}">
             <h2 id="titleA">{{ song_a.name }}</h2>
             <p>{{ song_a.artist }}</p>
+            <div class="song-stats">
+                <span class="rank-badge">#{{ rank_a }} <span class="of">of {{ total }}</span></span>
+                <span class="rating-val">{{ song_a.rating | round | int }}</span>
+            </div>
             <button type="button" class="btn-play" id="btnPlayA" onclick="playSingleSong('{{ song_a.uri }}')">▶ Play</button>
             <button type="button" class="btn-vote" id="voteA" onclick="castVote('{{ song_a.uri }}', '{{ song_b.uri }}')">Vote Left</button>
         </div>
@@ -144,9 +174,14 @@
 
         <div class="card" id="cardB">
             <div class="checkmark" id="checkB">✓</div>
+            <div class="delta-flash" id="deltaB"></div>
             <img src="{{ song_b.image }}">
             <h2 id="titleB">{{ song_b.name }}</h2>
             <p>{{ song_b.artist }}</p>
+            <div class="song-stats">
+                <span class="rank-badge">#{{ rank_b }} <span class="of">of {{ total }}</span></span>
+                <span class="rating-val">{{ song_b.rating | round | int }}</span>
+            </div>
             <button type="button" class="btn-play" id="btnPlayB" onclick="playSingleSong('{{ song_b.uri }}')">▶ Play</button>
             <button type="button" class="btn-vote" id="voteB" onclick="castVote('{{ song_b.uri }}', '{{ song_a.uri }}')">Vote Right</button>
         </div>
@@ -269,7 +304,7 @@
             .then(data => {
             if (data.success) {
                 hasVoted = true;
-                showVoteConfirmation(winner);
+                showVoteConfirmation(winner, data.winner_delta, data.loser_delta);
                 document.getElementById('voteA').disabled = true;
                 document.getElementById('voteB').disabled = true;
                 document.getElementById('btnPlayA').disabled = true;
@@ -278,26 +313,39 @@
 
                 // Toggle on: jump straight to a fresh pair after a brief flash
                 if (instantAdvance.checked) {
-                    setTimeout(advanceToNextMatch, 350);
+                    setTimeout(advanceToNextMatch, 1100);
                 }
             }
         });
         }
 
-        function showVoteConfirmation(winnerUri) {
+        function showVoteConfirmation(winnerUri, winnerDelta, loserDelta) {
             const cardA = document.getElementById('cardA');
             const cardB = document.getElementById('cardB');
             const checkA = document.getElementById('checkA');
             const checkB = document.getElementById('checkB');
+            const deltaA = document.getElementById('deltaA');
+            const deltaB = document.getElementById('deltaB');
+
+            // loserDelta is already negative, so only the positive one needs a "+"
+            const fmt = (n) => (n > 0 ? '+' + n : '' + n);
 
             if (winnerUri === songAUri) {
                 cardA.classList.add('winner');
                 cardB.classList.add('loser');
                 checkA.classList.add('show');
+                deltaA.innerText = fmt(winnerDelta);
+                deltaA.classList.add('win', 'show');
+                deltaB.innerText = fmt(loserDelta);
+                deltaB.classList.add('lose', 'show');
             } else {
                 cardB.classList.add('winner');
                 cardA.classList.add('loser');
                 checkB.classList.add('show');
+                deltaB.innerText = fmt(winnerDelta);
+                deltaB.classList.add('win', 'show');
+                deltaA.innerText = fmt(loserDelta);
+                deltaA.classList.add('lose', 'show');
             }
         }
 
